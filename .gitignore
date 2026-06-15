@@ -1,0 +1,15 @@
+# Python environments and cache
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
