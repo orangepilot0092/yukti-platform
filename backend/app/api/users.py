@@ -4,6 +4,7 @@ from app.db.session import SessionLocal
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse
 from app.crud import user as crud_user
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -20,6 +21,11 @@ def create_user_endpoint(user: UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud_user.create_user(db=db, user=user)
+
+# --- STATIC ROUTES MUST COME BEFORE DYNAMIC ROUTES ---
+@router.get("/me", response_model=UserResponse)
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user_endpoint(user_id: int, db: Session = Depends(get_db)):
