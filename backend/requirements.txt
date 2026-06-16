@@ -29,3 +29,4 @@ langchain-core
 langchain-community
 langgraph
 langchain-openai
+mcp==1.7.0
