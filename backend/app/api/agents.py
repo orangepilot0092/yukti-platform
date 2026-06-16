@@ -1,3 +1,5 @@
+import time
+import json
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -11,30 +13,44 @@ class AgentRequest(BaseModel):
 
 @router.post("/research")
 async def run_research_agent(request: AgentRequest):
-    print(f"📥 Received MCP Agentic RAG request: {request.query}", flush=True)
+    print(f"📥 Received Production Agentic RAG request: {request.query}", flush=True)
     try:
-        # Use the globally initialized MCP tools!
         tools = mcp_manager.tools
         if not tools:
             raise Exception("MCP Tools not initialized.")
             
         agent = build_research_agent(tools)
         
+        # Initialize state with guardrail metadata
         initial_state = {
             "messages": [
                 SystemMessage(content="You are the Yukti Enterprise Research Agent. Use the provided MCP tools to search the company knowledge base before answering."),
                 HumanMessage(content=request.query)
-            ]
+            ],
+            "steps_taken": 0,
+            "start_time": time.time(),
+            "error": None
         }
         
         final_state = await agent.ainvoke(initial_state)
+        
+        # Handle guardrail termination
+        if final_state.get("error"):
+            return {
+                "query": request.query,
+                "response": f"⚠️ {final_state['error']}",
+                "steps_taken": final_state.get("steps_taken", 0),
+                "status": "terminated"
+            }
+        
         final_message = final_state["messages"][-1].content
         
         return {
             "query": request.query,
             "response": final_message,
-            "steps_taken": len(final_state["messages"]) - 2
+            "steps_taken": final_state.get("steps_taken", 0),
+            "status": "success"
         }
     except Exception as e:
-        print(f"❌ MCP Agent Error: {e}", flush=True)
+        print(f"❌ Agent Error: {e}", flush=True)
         raise HTTPException(status_code=500, detail=str(e))
