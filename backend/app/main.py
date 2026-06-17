@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api import users, auth, rag, agents, agents_streaming
+from app.api import users, auth, rag, agents, agents_streaming, whatsapp, whatsapp
 from app.vector_db.client import ensure_collection_exists
 from app.mcp.manager import mcp_manager
 
@@ -21,6 +21,8 @@ app.include_router(users.router)
 app.include_router(rag.router)
 app.include_router(agents.router)
 app.include_router(agents_streaming.router) # NEW: SSE Streaming Router
+app.include_router(whatsapp.router)
+app.include_router(whatsapp.router)
 
 @app.get("/")
 def read_root():
