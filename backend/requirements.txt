@@ -31,3 +31,4 @@ langgraph
 langchain-openai
 mcp==1.7.0
 httpx
+asyncpg==0.29.0
