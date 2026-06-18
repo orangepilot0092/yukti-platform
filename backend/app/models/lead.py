@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Enum as SQLEnum
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.models.user import Base
 
 
@@ -11,6 +12,7 @@ class LeadIntent(str, enum.Enum):
     SITE_VISIT = "site_visit"
     PRICING_INQUIRY = "pricing_inquiry"
     SPAM = "spam"
+    CP_REFERRAL = "cp_referral"
     OTHER = "other"
 
 
@@ -31,9 +33,9 @@ class Lead(Base):
     name = Column(String(100), nullable=True)
     
     # AI Classification Fields
-    intent = Column(SQLEnum(LeadIntent), nullable=True)
+    intent = Column(String(50), nullable=True)
     score = Column(Float, nullable=True)  # 0-100
-    stage = Column(SQLEnum(LeadStage), default=LeadStage.NEW)
+    stage = Column(String(50), default=LeadStage.NEW)
     
     # Extracted Structured Data
     property_type = Column(String(50), nullable=True)  # e.g., "2BHK", "Villa"
@@ -46,9 +48,18 @@ class Lead(Base):
     last_message = Column(Text, nullable=True)
     conversation_summary = Column(Text, nullable=True)
     
+    # Tier 2: Loan Agent Pre-Qualification Signal
+    loan_prequal_signal = Column(String(200), nullable=True)  # e.g., "salaried_8lpa_cibil750"
+    
+    # Tier 2: Builder Project FK Placeholder (nullable for future use)
+    builder_project_id = Column(Integer, nullable=True)  # Will reference builder_projects table in Sprint 17
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # CP Referral Relationship
+    cp_referral = relationship("CPReferral", back_populates="lead", uselist=False)
 
     def __repr__(self):
         return f"<Lead(id={self.id}, phone={self.phone}, score={self.score})>"

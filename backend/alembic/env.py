@@ -11,11 +11,13 @@ target_metadata = None
 try:
     from app.models.user import Base
     from app.models.lead import Lead  # noqa: F401
+    from app.models.cp_referral import CPReferral  # noqa: F401
     target_metadata = Base.metadata
 except Exception as e:
     print(f'Warning: Could not load metadata: {e}')
 
 def run_migrations_online():
+    # url is defined INSIDE the function to prevent NameError
     url = os.getenv("DATABASE_URL", "postgresql://yukti_user:yukti_password_secure@localhost:5432/yukti_db")
     connectable = create_engine(url)
     with connectable.connect() as connection:
