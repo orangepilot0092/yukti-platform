@@ -6,6 +6,7 @@ from app.core.database import get_async_db
 from app.core.auth import get_current_tenant
 from app.models.tenant import Tenant
 from app.models.deal import Deal
+from app.models.lead import Lead
 from app.models.builder_project import BuilderProject
 from app.models.cp_commission import CPCommission
 
@@ -50,3 +51,37 @@ async def update_deal_status(deal_id: int, update: DealStatusUpdate, tenant: Ten
             await db.commit()
             
     return {"deal_id": deal.id, "new_status": deal.status}
+
+@router.post("/{deal_id}/trigger-vendor-referrals")
+async def trigger_vendor_referrals(deal_id: int, db = Depends(get_async_db)):
+    """
+    Post-Transaction: When deal closes, trigger WhatsApp menu for ancillary services.
+    Tracks referrals for 10% affiliate kickbacks from Interior/Moving vendors.
+    """
+    result = await db.execute(select(Deal).where(Deal.id == deal_id))
+    deal = result.scalar_one_or_none()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    
+    # Fetch associated lead
+    lead_result = await db.execute(select(Lead).where(Lead.id == deal.lead_id))
+    lead = lead_result.scalar_one_or_none()
+    if not lead:
+        return {"status": "no_lead_found"}
+    
+    # In production: Send WhatsApp menu via Whapi.cloud
+    # For MVP: Log the referral trigger
+    vendor_types = ["interior_design", "modular_kitchen", "packers_movers", "vastu_consultant"]
+    for vendor_type in vendor_types:
+        print(f"🏠 VENDOR REFERRAL TRIGGER: Lead {lead.phone} -> {vendor_type} (Deal Value: ₹{deal.deal_value:,.0f})")
+        # Here you would: 
+        # 1. Send WhatsApp message with vendor options
+        # 2. Create VendorReferral record if user selects a vendor
+        # 3. Track conversion for affiliate payout
+    
+    return {
+        "status": "referrals_triggered",
+        "lead_phone": lead.phone,
+        "deal_value": deal.deal_value,
+        "vendor_categories": vendor_types
+    }
