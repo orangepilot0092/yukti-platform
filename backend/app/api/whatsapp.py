@@ -40,8 +40,8 @@ def _task_exception_callback(task: asyncio.Task):
         print(f"❌ BACKGROUND TASK CRASHED: {type(exc).__name__}: {exc}", flush=True)
         traceback.print_exception(type(exc), exc, exc.__traceback__)
 
-async def process_and_reply(user_phone: str, message_text: str, from_name: str):
-    print(f"🟢 BG TASK STARTED for {user_phone}", flush=True)
+async def process_and_reply(user_phone: str, message_text: str, from_name: str, tenant_id: int):
+    print(f"🟢 BG TASK STARTED for {user_phone} (Tenant {tenant_id})", flush=True)
     try:
         qualifier = get_qualifier()
         initial_state = {
@@ -56,11 +56,6 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
         final_state = await qualifier.ainvoke(initial_state)
 
         async with async_session() as session:
-            # SPRINT 19: Map Webhook to Tenant (MVP: Fetch first active tenant)
-            tenant_res = await session.execute(select(Tenant).limit(1))
-            tenant = tenant_res.scalar_one_or_none()
-            tenant_id = tenant.id if tenant else None
-
             lead = Lead(
                 phone=user_phone, name=from_name,
                 intent=final_state.get("intent"), score=final_state.get("score"), stage=final_state.get("stage"),
@@ -74,9 +69,8 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
             )
             session.add(lead)
             
-            # SPRINT 19: Log Usage for Billing
-            if tenant_id:
-                session.add(UsageLog(tenant_id=tenant_id, action="lead_generated"))
+            # SPRINT 21: Accurate Usage Metering for the specific Tenant
+            session.add(UsageLog(tenant_id=tenant_id, action="lead_generated"))
                 
             await session.commit()
             print(f"💾 Lead persisted: ID={lead.id}, Tenant={tenant_id}, Eligibility=₹{lead.max_loan_eligibility:,.0f}", flush=True)
@@ -127,14 +121,30 @@ async def whatsapp_webhook(request: Request):
         user_phone = msg.get("from")
         message_text = msg.get("text", {}).get("body", "")
         from_name = msg.get("from_name", "User")
+        
+        # --- SPRINT 21: DYNAMIC TENANT ROUTING & SECURITY ---
+        # Extract the broker's virtual number from the webhook payload
+        broker_phone = msg.get("to") or msg.get("recipient")
+        
+        async with async_session() as db:
+            tenant = None
+            if broker_phone:
+                result = await db.execute(select(Tenant).where(Tenant.whatsapp_number == broker_phone))
+                tenant = result.scalar_one_or_none()
+                
+            if not tenant:
+                # SECURITY GATE: Reject unregistered numbers instantly to prevent AI credit burn
+                print(f"⚠️ REJECTED: No tenant found for broker phone {broker_phone}", flush=True)
+                return JSONResponse(status_code=403, content={"status": "forbidden", "error": "Unregistered broker number"})
 
-        if not user_phone or not message_text:
-            return JSONResponse(status_code=200, content={"status": "ignored"})
+            if not user_phone or not message_text:
+                return JSONResponse(status_code=200, content={"status": "ignored"})
 
-        task = asyncio.create_task(process_and_reply(user_phone, message_text, from_name))
-        task.add_done_callback(_task_exception_callback)
+            # Pass the validated tenant_id to the background task
+            task = asyncio.create_task(process_and_reply(user_phone, message_text, from_name, tenant.id))
+            task.add_done_callback(_task_exception_callback)
 
-        return JSONResponse(status_code=200, content={"status": "processing"})
+            return JSONResponse(status_code=200, content={"status": "processing", "tenant": tenant.name})
 
     except Exception as e:
         print(f"❌ Webhook error: {e}", flush=True)
