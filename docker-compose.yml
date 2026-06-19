@@ -1,33 +1,35 @@
-version: '3.8'
-
 services:
-  # --- PostgreSQL Database ---
   db:
     image: postgres:15-alpine
     container_name: yukti_postgres_dev
-    restart: always
     environment:
-      POSTGRES_USER: yukti_user
-      POSTGRES_PASSWORD: yukti_password_secure
-      POSTGRES_DB: yukti_db
+      - POSTGRES_USER=yukti_user
+      - POSTGRES_PASSWORD=yukti_password_secure
+      - POSTGRES_DB=yukti_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # --- FastAPI Backend ---
   backend:
     build: ./backend
-    image: yukti-backend:latest
     container_name: yukti_backend_dev
-    restart: always
     ports:
       - "8000:8000"
     environment:
-      # This tells FastAPI how to connect to the 'db' service above
-      - DATABASE_URL=postgresql://yukti_user:yukti_password_secure@db:5432/yukti_db
+      - DATABASE_URL=postgresql+asyncpg://yukti_user:yukti_password_secure@db:5432/yukti_db
     depends_on:
       - db
+
+  enterprise_gateway:
+    build: ./enterprise-gateway
+    container_name: yukti_java_gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
