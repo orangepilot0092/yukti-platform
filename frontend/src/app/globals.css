@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* MUMBAI INSTITUTIONAL LUXURY THEME (Tailwind v4) */
+@theme {
+  /* Deep Sapphire Night background, not pure black */
+  --color-sapphire: #0B1120;
+  --color-sapphire-light: #111827;
+  
+  /* Muted Brass / Gold for luxury accents */
+  --color-brass: #C5A059;
+  --color-brass-light: #D4AF37;
+  
+  /* Warm Stone for readable, elegant text */
+  --color-stone: #E7E5E4;
+  --color-stone-muted: #94A3B8;
+
+  /* Typography */
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-sapphire);
+  color: var(--color-stone);
+  font-family: var(--font-sans);
+}
+
+/* Hide default scrollbars for a clean, app-like feel */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Premium Gold Gradient Text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #E5C07B 0%, #C5A059 50%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Elegant Glassmorphism for Real Estate Cards */
+.luxury-panel {
+  background: rgba(17, 24, 39, 0.7); /* sapphire-light with opacity */
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(197, 160, 89, 0.15); /* subtle brass border */
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Subtle Architectural Grid Overlay */
+.arch-grid {
+  background-image: 
+    linear-gradient(rgba(197, 160, 89, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197, 160, 89, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}

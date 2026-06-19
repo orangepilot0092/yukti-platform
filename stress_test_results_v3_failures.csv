@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/builder/analytics/transit-heatmap,HTTPError('500 Server Error: Internal Server Error for url: /builder/analytics/transit-heatmap'),228,2026-06-19T12:51:07Z,2026-06-19T12:52:15Z
+GET,/builder/analytics/cp-leaderboard,CatchResponseError('Failed with 500'),283,2026-06-19T12:51:06Z,2026-06-19T12:52:15Z
+GET,/billing/usage,HTTPError('500 Server Error: Internal Server Error for url: /billing/usage'),178,2026-06-19T12:50:48Z,2026-06-19T12:52:14Z

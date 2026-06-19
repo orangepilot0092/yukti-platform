@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/builder/analytics/transit-heatmap,HTTPError('404 Client Error: Not Found for url: /builder/analytics/transit-heatmap'),10239,2026-06-19T12:27:32Z,2026-06-19T12:29:30Z
+GET,/builder/analytics/cp-leaderboard,CatchResponseError('Failed with 500'),494,2026-06-19T12:28:24Z,2026-06-19T12:29:08Z
+GET,/billing/usage,HTTPError('500 Server Error: Internal Server Error for url: /billing/usage'),225,2026-06-19T12:28:25Z,2026-06-19T12:29:08Z

@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:15-alpine
     container_name: yukti_postgres_dev
+    command: postgres -c max_connections=300 -c shared_buffers=256MB -c effective_cache_size=1GB
     environment:
       - POSTGRES_USER=yukti_user
       - POSTGRES_PASSWORD=yukti_password_secure
@@ -11,15 +12,25 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: yukti_redis
+    ports:
+      - "6379:6379"
+
   backend:
     build: ./backend
     container_name: yukti_backend_dev
+    # ENTERPRISE TUNING: Spawn 4 workers to utilize multi-core CPU
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://yukti_user:yukti_password_secure@db:5432/yukti_db
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - db
+      - redis
 
   enterprise_gateway:
     build: ./enterprise-gateway
