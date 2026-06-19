@@ -58,6 +58,12 @@ class Lead(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Sprint 15: Follow-up & Nurturing Fields
+    last_contacted_at = Column(DateTime(timezone=True), nullable=True)
+    next_follow_up_at = Column(DateTime(timezone=True), nullable=True)
+    follow_up_draft = Column(String(1000), nullable=True)
+    follow_up_status = Column(String(50), default="none")  # none, pending, approved, sent
+
     # CP Referral Relationship
     cp_referral = relationship("CPReferral", back_populates="lead", uselist=False)
 

@@ -42,3 +42,6 @@ app.include_router(crm_router)
 
 from app.api.analytics import router as analytics_router
 app.include_router(analytics_router)
+
+from app.api.nurture import router as nurture_router
+app.include_router(nurture_router)
