@@ -51,3 +51,6 @@ app.include_router(deals_router)
 
 from app.api.builder_analytics import router as builder_router
 app.include_router(builder_router)
+
+from app.api.billing import router as billing_router
+app.include_router(billing_router)

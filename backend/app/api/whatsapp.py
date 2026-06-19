@@ -7,9 +7,12 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 from app.agents.lead_qualifier import build_lead_qualifier
 from app.models.lead import Lead
-from app.models.builder_project import BuilderProject  # Ensure metadata registration
+from app.models.builder_project import BuilderProject
+from app.models.tenant import Tenant
+from app.models.usage import UsageLog
 from app.services.financials import sync_to_external_crm
 from app.services.recommendations import get_recommendations
 from langchain_core.messages import HumanMessage
@@ -53,6 +56,11 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
         final_state = await qualifier.ainvoke(initial_state)
 
         async with async_session() as session:
+            # SPRINT 19: Map Webhook to Tenant (MVP: Fetch first active tenant)
+            tenant_res = await session.execute(select(Tenant).limit(1))
+            tenant = tenant_res.scalar_one_or_none()
+            tenant_id = tenant.id if tenant else None
+
             lead = Lead(
                 phone=user_phone, name=from_name,
                 intent=final_state.get("intent"), score=final_state.get("score"), stage=final_state.get("stage"),
@@ -60,24 +68,27 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
                 budget_max=final_state.get("budget_max"), preferred_location=final_state.get("preferred_location"),
                 timeline=final_state.get("timeline"), monthly_income=final_state.get("monthly_income"),
                 existing_emi=final_state.get("existing_emi"), max_loan_eligibility=final_state.get("max_loan_eligibility"),
+                tenant_id=tenant_id,
                 last_message=message_text,
                 conversation_summary=f"Intent: {final_state.get('intent')}, Score: {final_state.get('score')}"
             )
             session.add(lead)
+            
+            # SPRINT 19: Log Usage for Billing
+            if tenant_id:
+                session.add(UsageLog(tenant_id=tenant_id, action="lead_generated"))
+                
             await session.commit()
-            print(f"💾 Lead persisted: ID={lead.id}, Eligibility=₹{lead.max_loan_eligibility:,.0f}", flush=True)
+            print(f"💾 Lead persisted: ID={lead.id}, Tenant={tenant_id}, Eligibility=₹{lead.max_loan_eligibility:,.0f}", flush=True)
 
             sync_result = await sync_to_external_crm(lead, webhook_url="https://webhook.site/your-unique-id")
             lead.crm_sync_status = sync_result.get("status")
             await session.commit()
 
-        # Generate reply
         if final_state.get("error"):
             ai_response = f"⚠️ {final_state['error']}"
         else:
             ai_response = final_state["messages"][-1].content
-
-            # --- SPRINT 17: AI PROPERTY RECOMMENDATIONS ---
             eligibility = final_state.get("max_loan_eligibility")
             if eligibility and eligibility > 0:
                 async with async_session() as session:
@@ -87,8 +98,6 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
                         for r in recs:
                             rec_text += f"• *{r['project']}* ({r['zone']}, {r['line']} Line)\n"
                         ai_response += rec_text
-
-        print(f"🤖 Response: {ai_response[:100]}...", flush=True)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(

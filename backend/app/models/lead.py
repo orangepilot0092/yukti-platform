@@ -1,3 +1,4 @@
+from sqlalchemy import ForeignKey
 import enum
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Enum as SQLEnum
@@ -27,6 +28,7 @@ class LeadStage(str, enum.Enum):
 
 class Lead(Base):
     __tablename__ = "leads"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
 
     id = Column(Integer, primary_key=True, index=True)
     phone = Column(String(20), nullable=False, index=True)

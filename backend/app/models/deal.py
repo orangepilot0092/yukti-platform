@@ -1,9 +1,11 @@
+from sqlalchemy import ForeignKey
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.models.user import Base
 
 class Deal(Base):
     __tablename__ = "deals"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
 
     id = Column(Integer, primary_key=True, index=True)
     lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False)

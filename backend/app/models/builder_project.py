@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.models.user import Base
 
 class BuilderProject(Base):
     __tablename__ = "builder_projects"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
 
     id = Column(Integer, primary_key=True, index=True)
     builder_name = Column(String(100), nullable=False)
