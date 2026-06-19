@@ -45,3 +45,6 @@ app.include_router(analytics_router)
 
 from app.api.nurture import router as nurture_router
 app.include_router(nurture_router)
+
+from app.api.deals import router as deals_router
+app.include_router(deals_router)
