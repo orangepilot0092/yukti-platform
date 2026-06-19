@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from app.agents.lead_qualifier import build_lead_qualifier
 from app.models.lead import Lead, LeadIntent, LeadStage
+from app.services.financials import sync_to_external_crm
 from langchain_core.messages import HumanMessage
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,10 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
             "budget_max": None,
             "preferred_location": None,
             "timeline": None,
+            # Sprint 16: Financial Fields
+            "monthly_income": None,
+            "existing_emi": None,
+            "max_loan_eligibility": None,
             "steps_taken": 0,
             "start_time": time.time(),
             "error": None
@@ -67,7 +72,7 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
         elapsed = time.time() - start
         print(f"🟢 QUALIFIER COMPLETED in {elapsed:.1f}s", flush=True)
 
-        # Persist lead data to PostgreSQL
+        # Persist lead data to PostgreSQL WITH FINANCIAL FIELDS
         async with async_session() as session:
             lead = Lead(
                 phone=user_phone,
@@ -80,12 +85,25 @@ async def process_and_reply(user_phone: str, message_text: str, from_name: str):
                 budget_max=final_state.get("budget_max"),
                 preferred_location=final_state.get("preferred_location"),
                 timeline=final_state.get("timeline"),
+                # Sprint 16: Save Financial Data
+                monthly_income=final_state.get("monthly_income"),
+                existing_emi=final_state.get("existing_emi"),
+                max_loan_eligibility=final_state.get("max_loan_eligibility"),
                 last_message=message_text,
-                conversation_summary=f"Intent: {final_state.get('intent')}, Score: {final_state.get('score')}"
+                conversation_summary=f"Intent: {final_state.get('intent')}, Score: {final_state.get('score')}, Eligibility: ₹{final_state.get('max_loan_eligibility'):,.0f}"
             )
             session.add(lead)
             await session.commit()
-            print(f"💾 Lead persisted: ID={lead.id}, Score={lead.score}", flush=True)
+            print(f"💾 Lead persisted: ID={lead.id}, Score={lead.score}, Eligibility=₹{lead.max_loan_eligibility:,.0f}", flush=True)
+
+            # --- SPRINT 16: OUTBOUND CRM SYNC ---
+            # Push enriched lead to broker's external CRM (Zoho/Realbooks)
+            # In production, fetch webhook_url from broker_integrations table
+            sync_result = await sync_to_external_crm(lead, webhook_url="https://webhook.site/your-unique-id")
+            lead.crm_sync_status = sync_result.get("status")
+            lead.external_crm_id = sync_result.get("external_id")
+            await session.commit()
+            print(f"🔄 CRM Sync: {sync_result}", flush=True)
 
         # Generate reply
         if final_state.get("error"):

@@ -58,6 +58,13 @@ class Lead(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Sprint 16: Financial Profiling & CRM Sync
+    monthly_income = Column(Float, nullable=True)
+    existing_emi = Column(Float, nullable=True)
+    max_loan_eligibility = Column(Float, nullable=True)
+    external_crm_id = Column(String(100), nullable=True)  # ID from Zoho/Realbooks
+    crm_sync_status = Column(String(50), default="pending")  # pending, synced, failed
+
     # Sprint 15: Follow-up & Nurturing Fields
     last_contacted_at = Column(DateTime(timezone=True), nullable=True)
     next_follow_up_at = Column(DateTime(timezone=True), nullable=True)
