@@ -48,3 +48,6 @@ app.include_router(nurture_router)
 
 from app.api.deals import router as deals_router
 app.include_router(deals_router)
+
+from app.api.builder_analytics import router as builder_router
+app.include_router(builder_router)
