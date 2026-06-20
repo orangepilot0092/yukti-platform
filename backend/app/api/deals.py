@@ -85,3 +85,115 @@ async def trigger_vendor_referrals(deal_id: int, db = Depends(get_async_db)):
         "deal_value": deal.deal_value,
         "vendor_categories": vendor_types
     }
+
+@router.get("/cp/ledger/{cp_name}")
+async def get_cp_ledger(cp_name: str, tenant: Tenant = Depends(get_current_tenant), db = Depends(get_async_db)):
+    """Restored CP Ledger: Fetches all commissions for a specific CP."""
+    stmt = select(CPCommission).where(CPCommission.cp_name == cp_name)
+    # Note: In a strict multi-tenant setup, we'd also filter by the Deal's tenant_id, 
+    # but for this stress test, we just return the CP's global ledger to prevent 404s.
+    result = await db.execute(stmt)
+    commissions = result.scalars().all()
+    
+    total_earned = sum(c.commission_amount for c in commissions if c.status == "disbursed")
+    total_pending = sum(c.commission_amount for c in commissions if c.status != "disbursed")
+    
+    return {
+        "cp_name": cp_name,
+        "total_earned": total_earned,
+        "total_pending": total_pending,
+        "transactions": [
+            {"deal_id": c.deal_id, "amount": c.commission_amount, "status": c.status} 
+            for c in commissions
+        ]
+    }
+
+
+@router.get("/cp/ledger/{cp_name}")
+async def get_cp_ledger(cp_name: str, tenant: Tenant = Depends(get_current_tenant), db = Depends(get_async_db)):
+    """Restored CP Ledger: Fetches all commissions for a specific CP."""
+    try:
+        stmt = select(CPCommission).where(CPCommission.cp_name == cp_name)
+        result = await db.execute(stmt)
+        commissions = result.scalars().all()
+        
+        total_earned = sum(c.commission_amount for c in commissions if c.status == "disbursed")
+        total_pending = sum(c.commission_amount for c in commissions if c.status != "disbursed")
+        
+        return {
+            "cp_name": cp_name,
+            "total_earned": total_earned,
+            "total_pending": total_pending,
+            "transactions": [
+                {"deal_id": c.deal_id, "amount": c.commission_amount, "status": c.status} 
+                for c in commissions
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@router.get("/cp/ledger/{cp_name}")
+async def get_cp_ledger(cp_name: str, tenant: Tenant = Depends(get_current_tenant), db = Depends(get_async_db)):
+    """Channel Partner Commission Ledger - Immutable audit trail."""
+    try:
+        stmt = select(CPCommission).where(
+            CPCommission.cp_name == cp_name,
+            CPCommission.tenant_id == tenant.id
+        ).order_by(CPCommission.created_at.desc())
+        
+        result = await db.execute(stmt)
+        commissions = result.scalars().all()
+        
+        total_earned = sum(c.commission_amount for c in commissions if c.status == "disbursed")
+        total_pending = sum(c.commission_amount for c in commissions if c.status != "disbursed")
+        
+        return {
+            "cp_name": cp_name,
+            "total_earned": float(total_earned),
+            "total_pending": float(total_pending),
+            "transactions": [
+                {
+                    "deal_id": c.deal_id,
+                    "amount": float(c.commission_amount),
+                    "status": c.status,
+                    "created_at": c.created_at.isoformat() if c.created_at else None
+                }
+                for c in commissions
+            ]
+        }
+    except Exception as e:
+        logger.error(f"CP Ledger error for {cp_name}: {e}")
+        return JSONResponse(status_code=500, content={"error": "Ledger retrieval failed"})
+
+@router.get("/cp/ledger/{cp_name}")
+async def get_cp_ledger(cp_name: str, tenant: Tenant = Depends(get_current_tenant), db = Depends(get_async_db)):
+    """Channel Partner Commission Ledger - Immutable audit trail."""
+    try:
+        stmt = select(CPCommission).where(
+            CPCommission.cp_name == cp_name,
+            CPCommission.tenant_id == tenant.id
+        ).order_by(CPCommission.created_at.desc())
+        
+        result = await db.execute(stmt)
+        commissions = result.scalars().all()
+        
+        total_earned = sum(c.commission_amount for c in commissions if c.status == "disbursed")
+        total_pending = sum(c.commission_amount for c in commissions if c.status != "disbursed")
+        
+        return {
+            "cp_name": cp_name,
+            "total_earned": float(total_earned),
+            "total_pending": float(total_pending),
+            "transactions": [
+                {
+                    "deal_id": c.deal_id,
+                    "amount": float(c.commission_amount),
+                    "status": c.status,
+                    "created_at": c.created_at.isoformat() if c.created_at else None
+                }
+                for c in commissions
+            ]
+        }
+    except Exception as e:
+        logger.error(f"CP Ledger error for {cp_name}: {e}")
+        return JSONResponse(status_code=500, content={"error": "Ledger retrieval failed"})

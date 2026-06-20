@@ -9,39 +9,26 @@ from app.core.auth import get_current_tenant
 from app.models.tenant import Tenant
 from app.models.deal import Deal
 from app.models.lead import Lead
-import redis.asyncio as aioredis
+from app.core.redis_client import redis_client
 
 router = APIRouter(prefix="/builder", tags=["builder_enterprise"])
-redis_client = aioredis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"), encoding="utf-8", decode_responses=True, max_connections=100)
 
-# Singleflight Locks to prevent Cache Stampede
 _cache_locks = {}
 
 async def get_cached_or_compute(cache_key: str, compute_func, ttl: int = 60):
-    """
-    Enterprise Singleflight Pattern:
-    Prevents the 'Thundering Herd' problem where 1000 concurrent users 
-    cause 1000 simultaneous DB queries on a cache miss.
-    """
-    # 1. Fast path: Cache Hit
     cached_data = await redis_client.get(cache_key)
     if cached_data:
         return json.loads(cached_data)
 
-    # 2. Slow path: Cache Miss -> Acquire Lock
     if cache_key not in _cache_locks:
         _cache_locks[cache_key] = asyncio.Lock()
-        
+
     async with _cache_locks[cache_key]:
-        # Double-check locking: Another worker might have populated it while we waited
         cached_data = await redis_client.get(cache_key)
         if cached_data:
             return json.loads(cached_data)
-            
-        # Compute heavy SQL (Only 1 worker does this!)
+
         result = await compute_func()
-        
-        # Save to Redis
         await redis_client.setex(cache_key, ttl, json.dumps(result))
         return result
 
@@ -53,7 +40,7 @@ class CPPerformance(BaseModel):
 @router.get("/analytics/cp-leaderboard", response_model=list[CPPerformance])
 async def get_cp_leaderboard(tenant: Tenant = Depends(get_current_tenant), db = Depends(get_async_db)):
     cache_key = f"analytics:cp_leaderboard:{tenant.id}"
-    
+
     async def compute():
         stmt = (
             select(Deal.cp_name, func.count(Deal.id).label("total_deals"), func.sum(Deal.deal_value).label("total_volume"))
@@ -68,7 +55,7 @@ async def get_cp_leaderboard(tenant: Tenant = Depends(get_current_tenant), db = 
 @router.get("/analytics/transit-heatmap")
 async def get_transit_heatmap(tenant: Tenant = Depends(get_current_tenant), db = Depends(get_async_db)):
     cache_key = f"analytics:transit_heatmap:{tenant.id}"
-    
+
     async def compute():
         transit_line_expr = case(
             (Lead.preferred_location.in_(["Bandra", "Andheri", "Worli", "Prabhadevi", "Kandivali", "Goregaon", "Malad"]), "Western"),

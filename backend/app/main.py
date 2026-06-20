@@ -57,3 +57,7 @@ app.include_router(billing_router)
 
 from app.api.dsa_marketplace import router as dsa_router
 app.include_router(dsa_router)
+
+# --- PAYMENTS ROUTER INJECTION ---
+from app.api import payments
+app.include_router(payments.router)
